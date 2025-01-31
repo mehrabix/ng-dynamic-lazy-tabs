@@ -26,6 +26,12 @@ export class TabService {
   readonly tabs = new BehaviorSubject<Tab[]>([]);
   tabs$ = this.tabs.asObservable();
 
+  private storageKey = 'tabs';
+
+  constructor() {
+    this.loadTabs(); // Load tabs from local storage on initialization
+  }
+
   async open(config: TabConfig, parentId?: string) {
     const id = config.id || crypto.randomUUID();
     let component: Type<any> | undefined;
@@ -74,6 +80,7 @@ export class TabService {
     // Insert new tab
     updatedTabs.splice(insertIndex, 0, newTab);
     await this.tabs.next(updatedTabs);
+    this.saveTabs(); // Save tabs whenever a new tab is added
 
     // Create children if any
     if (config.children?.length) {
@@ -120,6 +127,7 @@ export class TabService {
     }
 
     await this.tabs.next(updatedTabs);
+    this.saveTabs(); // Save tabs whenever a tab is activated
 
     // Create children if needed
     if (tabToActivate.children?.length && 
@@ -166,6 +174,7 @@ export class TabService {
     }
 
     this.tabs.next(remainingTabs);
+    this.saveTabs(); // Save tabs whenever a tab is closed
   }
 
   private getAllDescendantIds(parentId: string, tabs: Tab[]): string[] {
@@ -176,4 +185,15 @@ export class TabService {
       ...this.getAllDescendantIds(child.id, tabs)
     ], [] as string[]);
   }
-} 
+
+  private saveTabs(): void {
+    localStorage.setItem(this.storageKey, JSON.stringify(this.tabs.value));
+  }
+
+  private loadTabs(): void {
+    const savedTabs = localStorage.getItem(this.storageKey);
+    if (savedTabs) {
+      this.tabs.next(JSON.parse(savedTabs));
+    }
+  }
+}
